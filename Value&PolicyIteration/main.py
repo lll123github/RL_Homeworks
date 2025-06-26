@@ -1,3 +1,6 @@
+# 需要将vscode的执行目录设置为当前文件所在目录，否则无法导入环境模块
+import sys
+sys.path.append('..')
 from environment import *
 import numpy as np
 import collections
