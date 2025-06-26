@@ -1,0 +1,77 @@
+=== log_std ===
+Shape: (1,)
+Values (max 100): [3.0463972]
+
+=== features_extractor.fc1.weight ===
+Shape: (1, 8)
+Values (max 100): [ 0.34528518 -0.23006353  0.7388194  -0.07559846  0.2353466  -0.20536913
+ -1.7888254   0.19704674]
+
+=== features_extractor.fc2.weight ===
+Shape: (1, 8)
+Values (max 100): [-0.15214062  0.47909033  0.36601365 -0.25470987  0.35274556 -0.50182116
+ -0.4829696   0.7425211 ]
+
+=== features_extractor.fc3.weight ===
+Shape: (1, 8)
+Values (max 100): [-0.75105655  0.9689919  -2.457103    0.33591843  0.12696864 -0.02942568
+  0.60832053 -0.11888117]
+
+=== features_extractor.end_fc.weight ===
+Shape: (1, 3)
+Values (max 100): [-1.7885042 -0.6133482  1.2936174]
+
+=== pi_features_extractor.fc1.weight ===
+Shape: (1, 8)
+Values (max 100): [ 0.34528518 -0.23006353  0.7388194  -0.07559846  0.2353466  -0.20536913
+ -1.7888254   0.19704674]
+
+=== pi_features_extractor.fc2.weight ===
+Shape: (1, 8)
+Values (max 100): [-0.15214062  0.47909033  0.36601365 -0.25470987  0.35274556 -0.50182116
+ -0.4829696   0.7425211 ]
+
+=== pi_features_extractor.fc3.weight ===
+Shape: (1, 8)
+Values (max 100): [-0.75105655  0.9689919  -2.457103    0.33591843  0.12696864 -0.02942568
+  0.60832053 -0.11888117]
+
+=== pi_features_extractor.end_fc.weight ===
+Shape: (1, 3)
+Values (max 100): [-1.7885042 -0.6133482  1.2936174]
+
+=== vf_features_extractor.fc1.weight ===
+Shape: (1, 8)
+Values (max 100): [ 0.34528518 -0.23006353  0.7388194  -0.07559846  0.2353466  -0.20536913
+ -1.7888254   0.19704674]
+
+=== vf_features_extractor.fc2.weight ===
+Shape: (1, 8)
+Values (max 100): [-0.15214062  0.47909033  0.36601365 -0.25470987  0.35274556 -0.50182116
+ -0.4829696   0.7425211 ]
+
+=== vf_features_extractor.fc3.weight ===
+Shape: (1, 8)
+Values (max 100): [-0.75105655  0.9689919  -2.457103    0.33591843  0.12696864 -0.02942568
+  0.60832053 -0.11888117]
+
+=== vf_features_extractor.end_fc.weight ===
+Shape: (1, 3)
+Values (max 100): [-1.7885042 -0.6133482  1.2936174]
+
+=== action_net.weight ===
+Shape: (1, 1)
+Values (max 100): [-2.6172874]
+
+=== action_net.bias ===
+Shape: (1,)
+Values (max 100): [3.6857615]
+
+=== value_net.weight ===
+Shape: (1, 1)
+Values (max 100): [-8.294413]
+
+=== value_net.bias ===
+Shape: (1,)
+Values (max 100): [-1.7293295]
+

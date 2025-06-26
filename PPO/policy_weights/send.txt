@@ -1,0 +1,89 @@
+# MATLAB Implementation of CustomNetwork Inference
+
+Based on the provided Python neural network and weights, here's how to implement the inference process in MATLAB:
+
+```matlab
+classdef CustomNetwork
+    properties
+        fc1_weights
+        fc2_weights
+        fc3_weights
+        action_weight
+        bias
+    end
+    
+    methods
+        function obj = CustomNetwork()
+            % Initialize with the provided weights
+            obj.fc1_weights = [-0.242820 0.121057 -0.624108 0.278944 0.305281 -0.023878 2.019014 -0.031204;
+                               0.381434 -0.113488 0.039452 0.075335 -1.103022 0.371673 1.279695 -0.676503;
+                               -0.663452 -0.487239 -0.576733 0.142672 -0.375375 0.562136 0.341930 0.424254;
+                               -0.194212 0.232026 1.991769 -0.235330 0.214052 -0.204135 -0.627484 0.228712;
+                               0.119979 -0.213821 -0.143831 0.279982 -0.811447 -1.055697 0.282544 -0.222749;
+                               0.738486 -0.614048 1.644918 -0.317125 0.011817 -0.439784 -0.671042 0.179097;
+                               0.454265 -0.485355 -1.012430 0.216455 -0.122385 0.157950 0.849675 -0.250265;
+                               -0.811776 -0.046106 0.094788 0.343138 0.231021 0.797529 0.015281 -0.149454];
+                           
+            obj.fc2_weights = [0.307696 -0.426063 -0.766879 -0.002802 -0.509103 -0.733369 0.394300 0.428013;
+                               0.583529 -0.185535 0.377765 -0.173505 0.051545 -0.056535 0.902246 -0.795211;
+                               -0.720245 -0.789731 0.263161 0.211076 0.322545 0.247322 0.619671 0.441100;
+                               0.855461 0.107830 -0.009879 0.241450 0.846782 0.150357 0.073772 0.673108;
+                               0.044061 0.547158 0.675331 0.744238 -0.633169 -0.164566 0.320552 0.397462;
+                               -0.391677 0.718154 -0.797774 0.381147 0.281379 0.237891 0.597155 -0.238257;
+                               0.079490 0.313700 -0.010052 -0.897075 -0.441079 0.685381 0.380464 0.530451;
+                               -0.390615 0.484984 0.327448 -0.602604 0.492397 -0.906519 0.192212 0.201694];
+                           
+            obj.fc3_weights = [-0.959248 -1.016857 -0.172238 1.304300 0.077694 1.403884 2.537095 0.108427];
+            
+            obj.action_weight = 2.312510;
+            obj.bias = -3.250071;
+        end
+        
+        function output = forward(obj, observations)
+            % Ensure observations is a column vector
+            if size(observations, 2) > 1
+                observations = observations';
+            end
+            
+            % FC1 layer with ReLU activation
+            s1 = obj.fc1_weights * observations;
+            s1 = max(s1, 0); % ReLU
+            
+            % FC2 layer with ReLU activation
+            s2 = obj.fc2_weights * s1;
+            s2 = max(s2, 0); % ReLU
+            
+            % FC3 layer (no activation mentioned in original, but Python code shows ReLU)
+            s3 = obj.fc3_weights * s2;
+            s3 = max(s3, 0); % ReLU
+            
+            % Final output (assuming this is what you want)
+            output = s3 * obj.action_weight + obj.bias;
+        end
+    end
+end
+```
+
+## Usage Example:
+
+```matlab
+% Create the network
+net = CustomNetwork();
+
+% Create an 8D input vector (example values)
+input = [1; 0.5; -0.3; 0.2; -0.7; 0.4; -0.1; 0.6];
+
+% Perform inference
+output = net.forward(input);
+disp(['Network output: ', num2str(output)]);
+```
+
+## Notes:
+
+1. The implementation follows the Python network architecture with three fully connected layers.
+2. Each layer is followed by a ReLU activation function (max(0, x)) as in the Python code.
+3. The final output is computed as `fc3_output * action_weight + bias`.
+4. The weights are transposed compared to the Python version because MATLAB uses column-major order while Python (with NumPy) uses row-major order.
+5. The input should be an 8×1 column vector for correct matrix multiplication.
+
+If you need to process multiple inputs at once (batch processing), you would need to modify the implementation to handle matrices where each column is an input vector.
