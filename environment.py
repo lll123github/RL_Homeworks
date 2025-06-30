@@ -51,7 +51,7 @@ class Environment(gym.Env):
         self.observation_space=ObservationSpace()
 
         # self.observation_space = ObservationSpace()
-        self.state = collections.OrderedDict()
+        self.state:OrderedDict = collections.OrderedDict()
         self.reset()
         self.fig = None
         self.ax = None
@@ -67,11 +67,11 @@ class Environment(gym.Env):
             'g': 9.8,       # 重力加速度 (m/s^2)
             'I_1': (1/12)*0.9*(0.126**2),  # 车体转动惯量
             'I_2': (1/12)*0.1*(0.390**2),   # 摆杆转动惯量
-            'bins': 10,
+            'bins': 5,
             'LR_range': 5*np.pi,
             'd_LR_range': 5,
             'range_1': np.pi/2,
-            'range_2': np.pi,
+            'range_2': np.pi/2,
             'd_range_12': 5,
             'u_LR_range': 5,
             'u_sample_rate': 5,
@@ -346,44 +346,51 @@ class Environment(gym.Env):
 
 
 class DiscreteWrapper(Wrapper):
+    #大部分代码来自孙波
     def __init__(self,env:Environment):
         super().__init__(env)
-        self.update_params_range={
+        self.update_params_range=collections.OrderedDict({
             'theta_lr': 'LR_range',
             'theta_1': 'range_1',
             'theta_2': 'range_2',
             'd_theta_lr': 'd_LR_range',
             'd_theta_1': 'd_range_12',
             'd_theta_2': 'd_range_12',
-            }
+            })
         # 离散化动作空间（假设 u_lr ∈ [-1, 1]）
         self.ob_bins = env.params['bins']
         self.a_bins = env.params['action_bins']
         u_LR_range = env.params['u_LR_range']
         
-        for key,value in self.update_params_range:
+        for key,value in self.update_params_range.items():
             setattr(self,f'{key}_bins',np.linspace(-env.params[value],env.params[value],self.ob_bins))
 
         # 离散化动作空间（假设 u_lr ∈ [-1, 1]）
         self.action_bins = np.linspace(-u_LR_range, u_LR_range, self.a_bins)
 
         self.reset=ObservationWrapper.reset
+        self.env=env
 
-    def observation(self, observation):
+    def observation(self, observation:collections.OrderedDict):
         """将连续状态离散化为整数索引"""
-        discrete_observation=observation
-        for key,value in observation:
-            discrete_observation[key] = np.digitize(value, self.ob_bins) - 1
-        return discrete_observation
+        discrete_observation:list=[]
+        for key,value in observation.items():
+            discrete_observation.append( np.clip(np.digitize(value, getattr(self,f'{key}_bins')) - 1,0,self.ob_bins-1))
+        return tuple(discrete_observation)
 
-    def action(self, action):
-        """将离散动作索引转换为连续动作"""
-        u_lr_idx = np.digitize(action['u_lr'], self.action_bins) - 1
-        return collections.OrderedDict({'u_lr': np.array([self.action_bins[u_lr_idx]], dtype=np.float32)})
+    # def action(self, action:collections.OrderedDict):
+    #     """将离散动作索引转换为连续动作"""
+    #     u_lr_idx = np.digitize(action['u_lr'], self.action_bins) - 1
+    #     return collections.OrderedDict({'u_lr': np.array([self.action_bins[u_lr_idx]], dtype=np.float32)})
+    
+    def action(self, action_idx:np.ndarray):
+        """从离散动作索引恢复连续动作"""
+        u_lr = self.action_bins[action_idx]
+        return {'u_lr': np.array([u_lr], dtype=np.float32)}
 
-    def step(self, action):
-        observation, reward, terminated, truncated, info = self.env.step(self.action(action))
-        return self.observation(observation), reward, terminated, truncated, info
+    def step(self, action_idx:np.ndarray):
+        next_state, reward, terminated, info = self.env.step(self.action(action_idx))
+        return self.observation(next_state), reward, terminated,  info
     
 
     def get_state_edges(self,component_name:str,s_index:int):
@@ -420,45 +427,16 @@ class DiscreteWrapper(Wrapper):
         """将 ndarray 转换为 OrderedDict"""
         keys = list(self.observation_space.spaces.keys())
         return collections.OrderedDict({key: arr[i] for i, key in enumerate(keys)})
+    def orderedDict2ndarray(self,ordered_dict:collections.OrderedDict):
+        """将 OrderedDict 转换为 ndarray"""
+        return np.array([ordered_dict[key] for key in self.observation_space.spaces.keys()], dtype=np.float32)
 
-    def get_continuous_state(self, s):
+    def get_continuous_state(self, s:tuple):
         """将离散状态索引 s 转换为连续状态值"""
-        theta_lr_idx, theta_1_idx, theta_2_idx, d_theta_lr_idx, d_theta_1_idx, d_theta_2_idx = s
-        
-        # 计算各维度的连续值（取对应区间的中点）
-        theta_lr = self.theta_lr_bins[theta_lr_idx]
-        theta_1 = self.theta_1_bins[theta_1_idx]
-        theta_2 = self.theta_2_bins[theta_2_idx]
-        d_theta_lr = self.d_theta_lr_bins[d_theta_lr_idx]
-        d_theta_1 = self.d_theta_1_bins[d_theta_1_idx]
-        d_theta_2 = self.d_theta_2_bins[d_theta_2_idx]
-        
-        # 返回与原始环境状态格式一致的 OrderedDict
-        return collections.OrderedDict({
-            'theta_lr': np.array([theta_lr], dtype=np.float32),
-            'theta_1': np.array([theta_1], dtype=np.float32),
-            'theta_2': np.array([theta_2], dtype=np.float32),
-            'd_theta_lr': np.array([d_theta_lr], dtype=np.float32),
-            'd_theta_1': np.array([d_theta_1], dtype=np.float32),
-            'd_theta_2': np.array([d_theta_2], dtype=np.float32)
-        })
-    
-    def monte_carlo(self, state_index:np.array, action_index:int, n_samples:int=10000):
-        for action in self.action_bins:
-            # 计算当前状态的边界值
-            state_edges = self.get_states_edges(state_index)
-            action_edges = self.get_action_edge(action_index)
-            sampled_actions=np.uniform(
-                low=action_edges[0],
-                high=action_edges[1],
-                size=n_samples
-            )
-            # 进行蒙特卡洛仿真
-            for sample_index in range(n_samples):
-                pass
-                
-
-    
+        output_dict = collections.OrderedDict()
+        for i, key in enumerate(self.update_params_range.keys()):
+            output_dict[key] =np.array([ getattr(self, f"{key}_bins")[s[i]]],dtype=np.float32)
+        return output_dict
     def monte_carlo(self, state_index: np.array, action_index: int):
         # 保存原始环境状态（深度拷贝）
         original_state = collections.OrderedDict(
@@ -512,7 +490,7 @@ class DiscreteWrapper(Wrapper):
                 action_dict = {'u_lr': np.array([sampled_actions[i]], dtype=np.float32)}
                 next_state, _, _, _ = self.env.step(action_dict)
                 
-                # 关键修改点：使用observation方法离散化
+                # 使用observation方法离散化
                 discrete_state = self.observation(next_state)
                 
                 # 转换为索引元组
