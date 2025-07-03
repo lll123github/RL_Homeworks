@@ -43,10 +43,10 @@ class DiscreteEnvWrapper:
         d_theta_2_idx = np.clip(np.digitize(state['d_theta_2'], self.d_theta_2_bins) - 1, 0, self.bins-1)
         return (theta_lr_idx, theta_1_idx, theta_2_idx, d_theta_lr_idx, d_theta_1_idx, d_theta_2_idx)
     
-    def discretize_action(self, action):
-        """将连续动作离散化为整数索引"""
-        u_lr_idx = np.digitize(action['u_lr'], self.action_bins) - 1
-        return u_lr_idx
+    # def discretize_action(self, action):
+    #     """将连续动作离散化为整数索引"""
+    #     u_lr_idx = np.digitize(action['u_lr'], self.action_bins) - 1
+    #     return u_lr_idx
     
     def get_action_from_idx(self, action_idx):
         """从离散动作索引恢复连续动作"""
@@ -143,8 +143,13 @@ def policy_iteration(env_wrapper:DiscreteEnvWrapper, gamma=0.99, max_iter=1000, 
     policy = np.random.randint(0, n_actions, size=state_shape)
     
     for _ in range(max_iter):
+        print('Iteration:', _)  
+        p_num=0
+        r_num=0
         # 策略评估
         while True:
+            p_num+=1
+
             delta = 0
             for s in np.ndindex(*state_shape):
                 v = V[s]
@@ -159,10 +164,14 @@ def policy_iteration(env_wrapper:DiscreteEnvWrapper, gamma=0.99, max_iter=1000, 
                 # 更新值函数
                 V[s] = reward + gamma * (0 if done else V[s_next].item())
                 delta = max(delta, abs(v - V[s]))
+                print(f's:{s},delta:{delta}')
 
             if delta < theta:
                 print('delta:', delta)
-                break    
+                break  
+            if p_num%10==0:
+                print('p_num:', p_num)
+                print('delta:', delta)  
         
         # 策略改进
         policy_stable = True
@@ -188,26 +197,6 @@ def policy_iteration(env_wrapper:DiscreteEnvWrapper, gamma=0.99, max_iter=1000, 
     
     return V, policy
 
-def test_policy_iteration(env_wrapper:DiscreteWrapper,gamma=0.99, max_iter=1000, theta=1e-4):
-    n_bins=env_wrapper.bins
-    n_dims=len(env_wrapper.env.update_params.range)
-    n_actions = env_wrapper.a_bins
-    state_shape = (n_bins,) * n_dims
-    V=np.zeros(state_shape)
-    policy=np.random.randint(0, n_actions, size=state_shape)
-
-    # for _ in range(max_iter):
-    #     #策略评估
-    #     while True:
-    #         delta = 0
-    #         for s in 
-    #         if delta < theta:
-    #             break
-        
-
-    
-            
-                
 
 
 def value_iteration(env_wrapper, gamma=0.99, max_iter=1000, theta=1e-4):
@@ -342,16 +331,16 @@ if __name__ == "__main__":
 
     # P, R = compute_model_matrices(env_wrapper, n_samples=1000)
     
-    # print("Running Policy Iteration...")
-    # V_pi, policy_pi = policy_iteration(env_wrapper)
-    # print("Policy Iteration Completed!")
+    print("Running Policy Iteration...")
+    V_pi, policy_pi = policy_iteration(env_wrapper)
+    print("Policy Iteration Completed!")
     
-    print("Running Q Learning...")
-    begin_time = time.time()
-    # Q, policy_q = q_learning(env_wrapper)
-    cost = time.time()-begin_time
-    print('cost time:', cost)
-    print("Q Learning Completed!")
+    # print("Running Q Learning...")
+    # begin_time = time.time()
+    # # Q, policy_q = q_learning(env_wrapper)
+    # cost = time.time()-begin_time
+    # print('cost time:', cost)
+    # print("Q Learning Completed!")
     
     # print("\nRunning Value Iteration...")
     # V_vi, policy_vi = value_iteration(env_wrapper)

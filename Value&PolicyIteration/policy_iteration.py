@@ -54,7 +54,7 @@ def policy_iteration(env_wrapper:DiscreteWrapper, gamma=0.99, max_iter=1000, the
             for a in range(n_actions):
                 
                 env.state = env_wrapper.get_continuous_state(s)
-                s_next, reward, done, iter_idx = env_wrapper.step(a)
+                s_next, reward, done, _ = env_wrapper.step(a)
                 action_values[a] = reward + gamma * (0 if done else V[s_next].item())
             
             # 选择最优动作

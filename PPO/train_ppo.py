@@ -18,7 +18,7 @@ ENTROPY_BETA = 0.01  # 熵正则化系数
 MAX_EPISODES = 1000  # 最大训练回合数
 SAVE_INTERVAL = 20  # 每N个回合保存模型
 
-
+# 作者：孙波
 # 定义Actor网络
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim):

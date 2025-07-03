@@ -173,7 +173,7 @@ class Environment(gym.Env):
         self.state['d_theta_2'] = np.zeros((1,), dtype=np.float32)
         return self.state
 
-    def step(self, action):
+    def step(self, action:collections.OrderedDict):
     
         # 确保状态值是数值类型
         state_vec = np.array([
@@ -386,9 +386,9 @@ class DiscreteWrapper(Wrapper):
     def action(self, action_idx:np.ndarray):
         """从离散动作索引恢复连续动作"""
         u_lr = self.action_bins[action_idx]
-        return {'u_lr': np.array([u_lr], dtype=np.float32)}
+        return collections.OrderedDict({'u_lr': np.array([u_lr], dtype=np.float32)})
 
-    def step(self, action_idx:np.ndarray):
+    def step(self, action_idx:int):
         next_state, reward, terminated, info = self.env.step(self.action(action_idx))
         return self.observation(next_state), reward, terminated,  info
     
