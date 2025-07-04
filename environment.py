@@ -4,6 +4,7 @@ from gymnasium import Wrapper, spaces,ObservationWrapper,ActionWrapper
 from matplotlib import pyplot as plt
 import numpy as np
 import collections
+import random
 
 
 
@@ -73,9 +74,9 @@ class Environment(gym.Env):
             'range_1': np.pi/2,
             'range_2': np.pi/2,
             'd_range_12': 5,
-            'u_LR_range': 5,
+            'u_LR_range': np.pi,
             'u_sample_rate': 5,
-            'action_bins': 5
+            'action_bins': 10
         }
         dt=self.params['dt']
         # 参数
@@ -167,7 +168,10 @@ class Environment(gym.Env):
         self.B = np.append([[0, 0], [0, 0], [0, 0], [0, 0]], temp[:, 8:10], axis=0)
 
     def reset(self):
-        self.state = self.observation_space.sample()
+        # self.state = self.observation_space.sample()
+        self.state['theta_lr'] = np.array([random.gauss(0,np.pi/4)], dtype=np.float32)
+        self.state['theta_1'] = np.array([random.gauss(0,np.pi/4)], dtype=np.float32)
+        self.state['theta_2'] = np.array([random.gauss(0,np.pi/4)], dtype=np.float32)
         self.state['d_theta_lr'] = np.zeros((1,), dtype=np.float32)
         self.state['d_theta_1'] = np.zeros((1,), dtype=np.float32)
         self.state['d_theta_2'] = np.zeros((1,), dtype=np.float32)
@@ -221,19 +225,21 @@ class Environment(gym.Env):
         d_theta_lr = float(state['d_theta_lr'])
         d_theta_1 = float(state['d_theta_1'])
         d_theta_2 = float(state['d_theta_2'])
-        l_now = l1*np.cos(theta_1) + l2*np.cos(theta_2) + 2*r
-        L = l1 + l2 + 2*r
+        l_now = l1*np.cos(theta_1) + l2*np.cos(theta_2) + r
+        L = l1 + l2 + r
 
         # reward = -(100 * np.abs(theta_1) + 100 * np.abs(theta_2) + 2 * np.abs(theta_LR))
-        if l_now >= L*0.75:
-            healthy_reward = 10
-        else:
-            healthy_reward = -10
+        # if l_now >= L*0.75:
+        #     healthy_reward = 10
+        # else:
+        #     healthy_reward = -10
+        healthy_reward = 3*(l_now-0.85*L)/(0.15*L)
         velocity_penalty = 0.001*d_theta_1 + 0.0001*d_theta_2
         distance_penalty = 0.01*np.abs(theta_LR * r)
-        theta_penalty = np.abs(theta_1) + np.abs(theta_2)
-        reward = healthy_reward - velocity_penalty - distance_penalty
+        theta_penalty = np.pi*( np.abs(theta_1) + np.abs(theta_2) )*3
+        # reward = healthy_reward - velocity_penalty - distance_penalty-theta_penalty
         # reward = -theta_penalty - distance_penalty - velocity_penalty
+        reward=healthy_reward-theta_penalty
         return reward
 
     def is_terminated(self, state):
@@ -243,8 +249,8 @@ class Environment(gym.Env):
         theta_LR = float(state['theta_lr'][0])
         theta_1 = float(state['theta_1'][0])
         theta_2 = float(state['theta_2'][0])
-        l_now = l1*np.cos(theta_1) + l2*np.cos(theta_2) + 2*r
-        min_l = l2 + 2*r + l1*0.0
+        l_now = l1*np.cos(theta_1) + l2*np.cos(theta_2) + r
+        min_l = l2 + r - l1
 
         range_1 = self.params['range_1']
         range_2 = self.params['range_2']

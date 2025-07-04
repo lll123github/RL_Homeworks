@@ -64,12 +64,12 @@ if __name__ == "__main__":
     l = 1000
     history = np.zeros((l, 5))  # [theta_LR, theta_1, theta_2, action, reward]
     for t in range(l):
-        s = env_wrapper.observation(state)
+        s = env_wrapper.observation(state)#离散化
         action_idx =policy[s]
         # print(action_idx)
-        action = env_wrapper.action(action_idx)
+        action = env_wrapper.action(action_idx)#离散化
         # print(action)
-        next_state, reward, terminated, _ = env.step(action)
+        next_state, reward, terminated, _ = env.step(action) #注意这里使用的是env的step方法，是因为这里仿真需要从近乎连续的状态空间中采样动作，而不是离散化的动作空间
         # print(env.state)
         # 确保状态值是数值类型
         theta_LR = float(next_state['theta_lr'][0][0])
