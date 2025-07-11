@@ -33,7 +33,7 @@ def policy_iteration(env_wrapper:DiscreteWrapper, gamma=0.99, max_iter=1000, the
                 
                 # 执行动作，得到下一个状态和奖励
                 env.state = env_wrapper.get_continuous_state(s)
-                s_next, reward, done, iter_idx = env_wrapper.step(a)
+                s_next, reward, done, _ = env_wrapper.step(a)
                 
                 # 更新值函数
                 V[s] = reward + gamma * (0 if done else V[s_next].item())

@@ -9,8 +9,8 @@ import random
 
 
 class ActionSpace(spaces.Dict):
-    def __init__(self):
-        u_lr = spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32)
+    def __init__(self,range):
+        u_lr = spaces.Box(low=-range['u_lr'], high=range['u_lr'], shape=(1,), dtype=np.float32)
         super().__init__({'u_lr': u_lr})
 
 # class DiscreteActionSpace(spaces.Dict):
@@ -19,43 +19,39 @@ class ActionSpace(spaces.Dict):
 #         super().__init__({'u_lr': u_lr})
 
 class ObservationSpace(spaces.Dict):
-    def __init__(self):
-        theta_lr = spaces.Box(low=-np.pi, high=np.pi, shape=(1,), dtype=np.float32)
-        theta_1 = spaces.Box(low=-np.pi, high=np.pi, shape=(1,), dtype=np.float32)
-        theta_2 = spaces.Box(low=-np.pi, high=np.pi, shape=(1,), dtype=np.float32)
-        d_theta_lr = spaces.Box(low=-np.pi, high=np.pi, shape=(1,), dtype=np.float32)
-        d_theta_1 = spaces.Box(low=-np.pi, high=np.pi, shape=(1,), dtype=np.float32)
-        d_theta_2 = spaces.Box(low=-np.pi, high=np.pi, shape=(1,), dtype=np.float32)
-        super().__init__(collections.OrderedDict({'theta_lr': theta_lr, 'theta_1': theta_1, 'theta_2': theta_2,
-                          'd_theta_lr': d_theta_lr, 'd_theta_1': d_theta_1, 'd_theta_2': d_theta_2}))
+    def __init__(self,range:dict):
+        init_dict=collections.OrderedDict()
+        for key,value in range.items():
+            init_dict[key] = spaces.Box(low=-value, high=value, shape=(1,), dtype=np.float32)
+        super().__init__(init_dict)
         
-class DiscreteObservationSpace(spaces.Dict):
-    def __init__(self,ob_bins=20):
-        theta_lr = spaces.Discrete(ob_bins)
-        theta_1 = spaces.Discrete(ob_bins)
-        theta_2 = spaces.Discrete(ob_bins)
-        d_theta_lr = spaces.Discrete(ob_bins)
-        d_theta_1 = spaces.Discrete(ob_bins)
-        d_theta_2 = spaces.Discrete(ob_bins)
-        super().__init__(collections.OrderedDict({
-            'theta_lr': theta_lr,
-            'theta_1': theta_1, 
-            'theta_2': theta_2,
-            'd_theta_lr': d_theta_lr,
-            'd_theta_1': d_theta_1,
-            'd_theta_2': d_theta_2}))
+# class DiscreteObservationSpace(spaces.Dict):
+#     def __init__(self,ob_bins=20):
+#         theta_lr = spaces.Discrete(ob_bins)
+#         theta_1 = spaces.Discrete(ob_bins)
+#         theta_2 = spaces.Discrete(ob_bins)
+#         d_theta_lr = spaces.Discrete(ob_bins)
+#         d_theta_1 = spaces.Discrete(ob_bins)
+#         d_theta_2 = spaces.Discrete(ob_bins)
+#         super().__init__(collections.OrderedDict({
+#             'theta_lr': theta_lr,
+#             'theta_1': theta_1, t
+#             'theta_2': theta_2,
+#             'd_theta_lr': d_theta_lr,
+#             'd_theta_1': d_theta_1,
+#             'd_theta_2': d_theta_2}))
 
 
 class Environment(gym.Env):
     def __init__(self):
-        self.action_space = ActionSpace()
-        self.observation_space=ObservationSpace()
-
-        # self.observation_space = ObservationSpace()
-        self.state:OrderedDict = collections.OrderedDict()
-        self.reset()
-        self.fig = None
-        self.ax = None
+        self.params_range_map=collections.OrderedDict({
+            'theta_lr': 'LR_range',
+            'theta_1': 'range_1',
+            'theta_2': 'range_2',
+            'd_theta_lr': 'd_LR_range',
+            'd_theta_1': 'd_range_1',
+            'd_theta_2': 'd_range_2',
+            })
         self.params = {
             'dt': 0.01,
             'm_1': 0.9,     # 车体质量 (kg)
@@ -68,16 +64,33 @@ class Environment(gym.Env):
             'g': 9.8,       # 重力加速度 (m/s^2)
             'I_1': (1/12)*0.9*(0.126**2),  # 车体转动惯量
             'I_2': (1/12)*0.1*(0.390**2),   # 摆杆转动惯量
-            'bins': 5,
-            'LR_range': 5*np.pi,
-            'd_LR_range': 5,
-            'range_1': np.pi/2,
-            'range_2': np.pi/2,
-            'd_range_12': 5,
-            'u_LR_range': np.pi,
-            'u_sample_rate': 5,
-            'action_bins': 10
+            'bins': 7,
+            'LR_range': np.pi/4,
+            'range_1': np.pi/4,
+            'range_2': np.pi/4,
+            # 'u_sample_rate': 5,
+            'a_bins': 9,
+            'max_reward': 10,  # 单次的奖励最大值
         }
+        self.params['d_range_1']=self.params['range_1']/self.params['dt']
+        self.params['d_range_2']=self.params['range_2']/self.params['dt']
+        self.params['d_LR_range']=self.params['LR_range']/self.params['dt']
+        self.params['u_LR_range']=self.params['d_LR_range']/self.params['dt']
+
+        self.ob_range=collections.OrderedDict()
+        self.a_range=collections.OrderedDict({
+            'u_lr': self.params['u_LR_range']})
+        for key, value in self.params_range_map.items():
+                self.ob_range[key] = self.params[value]
+        self.action_space = ActionSpace(self.a_range)
+        self.observation_space=ObservationSpace(self.ob_range)
+
+        # self.observation_space = ObservationSpace()
+        self.state:OrderedDict = collections.OrderedDict()
+        self.reset()
+        self.fig = None
+        self.ax = None
+        
         dt=self.params['dt']
         # 参数
         m_1 = self.params['m_1']
@@ -167,11 +180,17 @@ class Environment(gym.Env):
                        [0, 0, 0, 0, 0, 0, 0, 1]], temp[:, 0:8], axis=0)
         self.B = np.append([[0, 0], [0, 0], [0, 0], [0, 0]], temp[:, 8:10], axis=0)
 
-    def reset(self):
+    def reset(self, noise=True, sigma=np.pi/16):
         # self.state = self.observation_space.sample()
-        self.state['theta_lr'] = np.array([random.gauss(0,np.pi/4)], dtype=np.float32)
-        self.state['theta_1'] = np.array([random.gauss(0,np.pi/4)], dtype=np.float32)
-        self.state['theta_2'] = np.array([random.gauss(0,np.pi/4)], dtype=np.float32)
+        self.state['theta_lr'] = np.array([0], dtype=np.float32)
+        if noise:
+            # self.state['theta_lr'] = np.array([random.gauss(0, sigma)], dtype=np.float32)
+            self.state['theta_1'] = np.array([random.gauss(0, sigma)], dtype=np.float32)
+            self.state['theta_2'] = np.array([random.gauss(0, sigma)], dtype=np.float32)
+        else:
+            # self.state['theta_lr'] = np.array([0], dtype=np.float32)
+            self.state['theta_1'] = np.array([0], dtype=np.float32)
+            self.state['theta_2'] = np.array([0], dtype=np.float32)
         self.state['d_theta_lr'] = np.zeros((1,), dtype=np.float32)
         self.state['d_theta_1'] = np.zeros((1,), dtype=np.float32)
         self.state['d_theta_2'] = np.zeros((1,), dtype=np.float32)
@@ -195,7 +214,10 @@ class Environment(gym.Env):
         action_vec = np.array([float(action['u_lr']), float(action['u_lr'])])
         
         # 计算下一个状态
-        next_state_vec = (np.matmul(self.A, state_vec) + np.matmul(self.B, action_vec))*self.params['dt']+state_vec
+        next_state_vec = (np.matmul(self.A, state_vec) + np.matmul(self.B, action_vec))*self.params['dt']
+        # print('next_state_vec:',next_state_vec)
+        # print('state_vec:',state_vec)
+        next_state_vec=next_state_vec+state_vec  # 更新状态
         next_state_vec = next_state_vec.reshape(-1, 1)
         
         next_state = collections.OrderedDict({
@@ -227,19 +249,20 @@ class Environment(gym.Env):
         d_theta_2 = float(state['d_theta_2'])
         l_now = l1*np.cos(theta_1) + l2*np.cos(theta_2) + r
         L = l1 + l2 + r
+        max_reward=self.params['max_reward']
 
         # reward = -(100 * np.abs(theta_1) + 100 * np.abs(theta_2) + 2 * np.abs(theta_LR))
         # if l_now >= L*0.75:
         #     healthy_reward = 10
         # else:
         #     healthy_reward = -10
-        healthy_reward = 3*(l_now-0.85*L)/(0.15*L)
-        velocity_penalty = 0.001*d_theta_1 + 0.0001*d_theta_2
+        healthy_reward = max_reward*(l_now-0.85*L)/(0.15*L)
+        velocity_penalty = 0.01*d_theta_1 + 0.01*d_theta_2
         distance_penalty = 0.01*np.abs(theta_LR * r)
-        theta_penalty = np.pi*( np.abs(theta_1) + np.abs(theta_2) )*3
+        theta_penalty = ( np.abs(theta_1) + np.abs(theta_2) )*np.pi
         # reward = healthy_reward - velocity_penalty - distance_penalty-theta_penalty
         # reward = -theta_penalty - distance_penalty - velocity_penalty
-        reward=healthy_reward-theta_penalty
+        reward=healthy_reward-velocity_penalty
         return reward
 
     def is_terminated(self, state):
@@ -321,7 +344,7 @@ class Environment(gym.Env):
         # 强制刷新图像
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
-        plt.pause(0.01)
+        plt.pause(self.params['dt'])
     
     def close(self):
         if self.fig is not None:
@@ -355,20 +378,13 @@ class DiscreteWrapper(Wrapper):
     #大部分代码来自孙波
     def __init__(self,env:Environment):
         super().__init__(env)
-        self.update_params_range=collections.OrderedDict({
-            'theta_lr': 'LR_range',
-            'theta_1': 'range_1',
-            'theta_2': 'range_2',
-            'd_theta_lr': 'd_LR_range',
-            'd_theta_1': 'd_range_12',
-            'd_theta_2': 'd_range_12',
-            })
+        
         # 离散化动作空间（假设 u_lr ∈ [-1, 1]）
         self.ob_bins = env.params['bins']
-        self.a_bins = env.params['action_bins']
+        self.a_bins = env.params['a_bins']
         u_LR_range = env.params['u_LR_range']
         
-        for key,value in self.update_params_range.items():
+        for key,value in self.env.params_range_map.items():
             setattr(self,f'{key}_bins',np.linspace(-env.params[value],env.params[value],self.ob_bins))
 
         # 离散化动作空间（假设 u_lr ∈ [-1, 1]）
@@ -381,7 +397,11 @@ class DiscreteWrapper(Wrapper):
         """将连续状态离散化为整数索引"""
         discrete_observation:list=[]
         for key,value in observation.items():
-            discrete_observation.append( np.clip(np.digitize(value, getattr(self,f'{key}_bins')) - 1,0,self.ob_bins-1))
+            # 找到value在{key}_bins中最近的值的索引
+            bins:np.ndarray = getattr(self, f'{key}_bins')
+            value_scalar = float(value) 
+            idx = np.abs(bins - value_scalar).argmin()
+            discrete_observation.append(np.clip(idx, 0, self.ob_bins - 1))
         return tuple(discrete_observation)
 
     # def action(self, action:collections.OrderedDict):
@@ -401,7 +421,7 @@ class DiscreteWrapper(Wrapper):
 
     def get_state_edges(self,component_name:str,s_index:int):
         """获取离散状态的边界值"""
-        if not component_name in self.update_params_range:
+        if not component_name in self.env.params_range_map:
             
             raise ValueError(f"Unknown component name: {component_name}")
         center=getattr(self, f"{component_name}_bins")[s_index]
@@ -416,7 +436,7 @@ class DiscreteWrapper(Wrapper):
         """获取离散状态的边界值"""
         state_edges = np.zeros((len(s_indexs), 2), dtype=np.float32)
         for i, s_index in enumerate(s_indexs):
-            component_name = self.update_params_range[i]
+            component_name = self.env.params_range_map[i]
             state_edges[i] = self.get_state_edges(component_name, s_index)
         return state_edges
     
@@ -440,7 +460,7 @@ class DiscreteWrapper(Wrapper):
     def get_continuous_state(self, s:tuple):
         """将离散状态索引 s 转换为连续状态值"""
         output_dict = collections.OrderedDict()
-        for i, key in enumerate(self.update_params_range.keys()):
+        for i, key in enumerate(self.env.params_range_map.keys()):
             output_dict[key] =np.array([ getattr(self, f"{key}_bins")[s[i]]],dtype=np.float32)
         return output_dict
     def monte_carlo(self, state_index: np.array, action_index: int):
@@ -454,7 +474,7 @@ class DiscreteWrapper(Wrapper):
         action_edges = self.get_action_edge(action_index)
         
         # 初始化概率矩阵（6维张量）
-        state_shape = (self.ob_bins,) * len(self.update_params_range)
+        state_shape = (self.ob_bins,) * len(self.env.params_range_map)
         counts = np.zeros(state_shape, dtype=np.float32)
         
         # 优化参数配置
@@ -502,7 +522,7 @@ class DiscreteWrapper(Wrapper):
                 # 转换为索引元组
                 indices = tuple(
                     int(discrete_state[key][0]) 
-                    for key in self.update_params_range.keys()
+                    for key in self.env.params_range_map.keys()
                 )
                 
                 # 更新计数（防止越界）

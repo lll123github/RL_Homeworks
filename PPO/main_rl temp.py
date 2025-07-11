@@ -14,17 +14,18 @@ import scipy.linalg
 class CustomNetwork(BaseFeaturesExtractor):
     def __init__(self, observation_space, features_dim=1):
         super().__init__(observation_space, features_dim)
-        self.fc1 = nn.Linear(8, 1, bias=False)
-        self.fc2 = nn.Linear(8, 1, bias=False)
+        self.fc1 = nn.Linear(8, 8, bias=False)
+        self.fc2 = nn.Linear(8, 8, bias=False)
         self.fc3 = nn.Linear(8, 1, bias=False)
-        self.end_fc = nn.Linear(3, 1, bias=False)
+        # self.end_fc = nn.Linear(3, 1, bias=False)
     
     def forward(self, observations):
         s1 = torch.relu(self.fc1(observations))
-        s2 = torch.relu(self.fc2(observations))
-        s3 = torch.relu(self.fc3(observations))
-        s4 = torch.cat([s1, s2, s3], dim=1)
-        return self.end_fc(s4)
+        s2 = torch.relu(s1)
+        s3 = torch.relu(s2)
+        # s4 = torch.cat(s3, dim=1)
+        # return self.end_fc(s4)
+        return self.fc3(s3)
 
 class CustomActorCriticPolicy(ActorCriticPolicy):
     def __init__(self, *args, **kwargs):
@@ -186,7 +187,7 @@ policy_kwargs = dict(
 model = PPO('MlpPolicy', env, verbose=1, ent_coef=0.01, tensorboard_log="./ppo_tensorboard_log", policy_kwargs=policy_kwargs)
 
 # 训练模型
-model.learn(total_timesteps=1000,
+model.learn(total_timesteps=1000000,
             tb_log_name="PPO_CustomEnv")
 
 # 保存模型
